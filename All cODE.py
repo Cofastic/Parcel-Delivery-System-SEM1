@@ -231,6 +231,7 @@ def add_customer(system, name, address, telephone):
     customer = {"id": customer_id, "name": name, "address": address, "telephone": telephone}
     # Append/Add the new customer to the list of customers in the system
     system["customers"].append(customer)
+    save_customers_to_file(system)
     return customer_id
 
 def modify_customer(system, customer_id, address, telephone):
@@ -421,13 +422,24 @@ def generate_unique_parcel_number(system):
         # Checks if the generated parcel number is already in use
         if not any(parcel["parcel_number"] == new_parcel_number for parcel in system["parcels"]):
             return new_parcel_number
+
+
 def create_consignment(system):
+    # Check if there are customers available
+    if not system["customers"]:
+        print("No customers available. Cannot create a consignment.")
+        return
+
+    # Display the available customers
     view_customers(system)
+
     try:
         # Asks for customer ID input
         customer_id = int(input("Enter the customer ID on where the consignment will be made in: "))
+
         # Finds the customer with the specified ID
         customer = next((c for c in system["customers"] if c["id"] == customer_id), None)
+
         if customer:
             # Asks for details to create a parcel
             zone = input("Enter zone: ")
@@ -536,39 +548,6 @@ def print_pricing_table():
     # Print the pricing table using the tabulate function
     print(tabulate(table_price, headers=headers, tablefmt="grid"))
 
-# Bill management functions
-def view_bill(system, consignment_number):
-    total_amount = 0  # Initialize the total amount for the bill
-    headers = ["Parcel Number", "Receiver Name", "Receiver Address", "Receiver Telephone", "zone", "Weight", "Price"]
-    bill_data = []  # Initialize an empty list to store bill items
-
-    # Iterate through parcels in the system
-    for parcel in system["parcels"]:
-        if parcel["consignment_number"] == consignment_number:
-            # Create an item for the bill with relevant parcel information
-            item = [
-                parcel["parcel_number"],
-                parcel["sender_name"],  # Assuming sender_name is the receiver's name
-                parcel["sender_address"],  # Assuming sender_address is the receiver's address
-                parcel["sender_telephone"],  # Assuming sender_telephone is the receiver's telephone
-                parcel["zone"],
-                parcel["weight"],
-                parcel["price"]
-            ]
-            bill_data.append(item)  # Add the item to the list of bill items
-            total_amount += float(parcel["price"].replace('RM', ''))  # Update the total amount
-
-    # Display the bill items in a tabular format
-    print(f"Bill for Consignment Number: {consignment_number}")
-    print(tabulate(bill_data, headers=headers, tablefmt="grid"))
-    # Display total amount, service tax, and total amount with tax
-    service_tax = total_amount * 0.08
-    total_amount_with_tax = total_amount + service_tax
-    print(f"Total Amount: RM {total_amount:.2f}")
-    print(f"Service Tax (8%): RM {service_tax:.2f}")
-    print(f"Total Amount with Tax: RM {total_amount_with_tax:.2f}")
-
-
 def view_bills_by_customer(system, customer_id):
     total_amount = 0  # Initialize the total amount for the bills
     headers = ["Consignment Number", "Parcel Number", "Receiver Name", "Receiver Address", "Receiver Telephone", "zone",
@@ -610,7 +589,8 @@ def view_bills_by_customer(system, customer_id):
 
 def view_bills_by_date(system, start_date, end_date):
     total_amount = 0  # Initialize the total amount for the bills
-    headers = ["Consignment Number", "Parcel Number", "zone", "Weight", "Price"]
+    headers = ["Consignment Number", "Parcel Number", "Receiver Name", "Receiver Address", "Receiver Telephone", "zone",
+               "Weight (KG)", "Price (RM)"]
     bill_data = []  # Initialize an empty list to store bill items
 
     # Convert start_date and end_date strings to datetime objects
@@ -625,20 +605,33 @@ def view_bills_by_date(system, start_date, end_date):
         if start_datetime <= parcel_date <= end_datetime:
             # Check if the price is not an empty string
             if parcel["price"]:
+                # Convert the price to float for calculations
+                price = float(parcel["price"].replace('RM', ''))
+
                 # Add parcel details to the bill_data list
                 bill_data.append([
                     parcel["consignment_number"],
                     parcel["parcel_number"],
+                    parcel["sender_name"],
+                    parcel["sender_address"],
+                    parcel["sender_telephone"],
                     parcel["zone"],
                     parcel["weight"],
-                    parcel["price"]
+                    price  # Use the converted price in calculations
                 ])
-                total_amount += float(parcel["price"].replace('RM', ''))  # Update the total amount
+                total_amount += price  # Update the total amount
+
+    # Calculate 8% service tax
+    service_tax = total_amount * 0.08
+    total_amount_with_tax = total_amount + service_tax
 
     # Display the bill items in a tabular format
     print(tabulate(bill_data, headers=headers, tablefmt="grid"))
-    print(f"Total Amount: {total_amount}")
 
+    # Display total amount, service tax, and total amount with tax
+    print(f"Total Amount: RM{total_amount:.2f}")
+    print(f"Service Tax (8%): RM{service_tax:.2f}")
+    print(f"Total Amount with Tax: RM{total_amount_with_tax:.2f}")
 def load_bills_from_file(system):
 # Load bills data from a file into the system
     try:
@@ -715,6 +708,7 @@ while True:
                     address = input("Enter customer address: ")
                     telephone = input("Enter customer telephone: ")
                     add_customer(system, name, address, telephone)
+                    save_customers_to_file(system)
 
                 elif operator_choice == '2':
                     # Option 2: Modify an existing customer
