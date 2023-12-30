@@ -458,29 +458,9 @@ def generate_unique_consignment_number(system):
         # Check if the generated consignment number is already in use
         if not any(consignment["consignment_number"] == new_consignment_number for consignment in system["parcels"]):
             return new_consignment_number
-
-def delete_parcel_within_consignment(system, consignment_number):
-    # Displays the bill for the specified consignment
-    view_bill(system, consignment_number)
-    # Asks the user to input the parcel number to delete
-    parcel_number_to_delete = input("Enter the parcel number to delete within this consignment: ")
-
-    for i, parcel in enumerate(system["parcels"]):
-        # Checks if the parcel is in the specified consignment and has the specified parcel number
-        if parcel["consignment_number"] == consignment_number and parcel["parcel_number"] == parcel_number_to_delete:
-            # Deletes the parcel from the system
-            del system["parcels"][i]
-            print(f"Parcel {parcel_number_to_delete} deleted successfully from the consignment {consignment_number}!")
-
-            # Save changes to files
-            save_parcels_to_file(system)
-            generate_bill(system, consignment_number)  # Update the bill after deleting the parcel
-            return
-    print(f"Parcel {parcel_number_to_delete} not found in the consignment {consignment_number}.")
-
 def delete_parcel_from_bill(system, consignment_number, parcel_number):
     for i, parcel in enumerate(system["parcels"]):
-        # Checks if the parcel is in the specified consignment and has the specified parcel number
+        # Checks if the consignment and parcel numbers match
         if parcel["consignment_number"] == consignment_number and parcel["parcel_number"] == parcel_number:
             # Deletes the parcel from the system
             del system["parcels"][i]
@@ -548,8 +528,6 @@ def generate_bill(system, consignment_number):
 
     # Add the generated bill to the system's bills
     system["bills"].append(bill)
-    # Print a success message
-    print("Bill generated successfully!")
 
 
 def print_pricing_table():
@@ -645,15 +623,17 @@ def view_bills_by_date(system, start_date, end_date):
 
         # Check if the parcel date is within the specified range
         if start_datetime <= parcel_date <= end_datetime:
-            # Add parcel details to the bill_data list
-            bill_data.append([
-                parcel["consignment_number"],
-                parcel["parcel_number"],
-                parcel["zone"],
-                parcel["weight"],
-                parcel["price"]
-            ])
-            total_amount += parcel["price"]  # Update the total amount
+            # Check if the price is not an empty string
+            if parcel["price"]:
+                # Add parcel details to the bill_data list
+                bill_data.append([
+                    parcel["consignment_number"],
+                    parcel["parcel_number"],
+                    parcel["zone"],
+                    parcel["weight"],
+                    parcel["price"]
+                ])
+                total_amount += float(parcel["price"].replace('RM', ''))  # Update the total amount
 
     # Display the bill items in a tabular format
     print(tabulate(bill_data, headers=headers, tablefmt="grid"))
@@ -779,18 +759,17 @@ while True:
                     end_date = input("Enter end date (YYYY-MM-DD): ")
                     if start_date > end_date:
                         print("Invalid date range.")
-                    elif start_date and end_date not in (parcel["date"] for parcel in system["parcels"]):
+                    elif all(date not in [parcel["date"] for parcel in system["parcels"]] for date in
+                             [start_date, end_date]):
                         print("No bills found within the date range.")
                     else:
                         view_bills_by_date(system, start_date, end_date)
 
                 elif operator_choice == '8':
                     # Option 8: Delete a parcel within a consignment
-                    consignment_number = int(input("Enter consignment number: "))
-                    if consignment_number in (parcel["consignment_number"] for parcel in system["parcels"]):
-                        delete_parcel_within_consignment(system, consignment_number)
-                    else:
-                        print("Consignment number not found.")
+                    consignment_number = (input("Enter consignment number: "))
+                    parcel_number = (input("Enter Parcel number: "))
+                    delete_parcel_from_bill(system, consignment_number, parcel_number)
 
                 elif operator_choice == '9':
                     # Option 9: Create a new consignment
