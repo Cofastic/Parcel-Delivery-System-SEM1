@@ -12,28 +12,7 @@ from datetime import datetime
 CUSTOMERS_FILE = 'customers.json'
 PARCELS_FILE = 'parcels.json'
 BILLS_FILE = 'bills.json'
-def reset_system(system):
-    confirmation = input("Are you sure you want to reset all parcels and bills? (yes/no): ")
 
-    if confirmation.lower() == 'yes':
-        # Clear parcels and bills data
-        system["parcels"] = []
-        system["bills"] = []
-
-        # Reset current parcel and consignment numbers to default
-        system["current_consignment_number"] = 10000000
-        system["current_parcel_number"] = 10000000
-
-        # Reset current bill number to default
-        system["current_bill_id"] = 10000000
-
-        # Save changes to files
-        save_parcels_to_file(system)
-        save_bills_to_file(system)
-
-        print("Parcels, bills, and counters reset successfully!")
-    else:
-        print("Reset operation canceled.")
 def initialize_system():
 #creates and returns a dictionary representing the initial state of a system.
     return {
